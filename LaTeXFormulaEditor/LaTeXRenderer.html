@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Renderer</title>
+    
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        #latex-output {
+            text-align: center;
+            font-size: 24px;
+            transform-origin: center center;
+            transition: transform 0.1s ease;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="latex-output"></div>
+    
+    <script>
+        const output = document.getElementById('latex-output');
+        let currentLatex = '';
+        let currentScale = 1.0;
+        let currentFormulaColor = '#000000';
+        let currentBackgroundColor = '#FFFFFF';
+        let currentFont = 'KaTeX';
+        let currentFontSize = 24;
+        let currentEngine = 'katex'; // 'katex' or 'mathjax'
+        let mathJaxReady = false;
+        
+        // Check if MathJax is ready
+        window.addEventListener('load', function() {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                mathJaxReady = true;
+            }
+        });
+        
+        // Wait for MathJax to be ready
+        function waitForMathJax() {
+            return new Promise((resolve) => {
+                if (mathJaxReady) {
+                    resolve();
+                    return;
+                }
+                
+                const checkInterval = setInterval(() => {
+                    if (window.MathJax && window.MathJax.typesetPromise) {
+                        mathJaxReady = true;
+                        clearInterval(checkInterval);
+                        resolve();
+                    }
+                }, 100);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve();
+                }, 10000);
+            });
+        }
+        
+        // Set render engine
+        window.setRenderEngine = function(engine) {
+            currentEngine = engine;
+            if (currentLatex) {
+                window.renderLatex(currentLatex);
+            }
+        };
+        
+        // Render LaTeX
+        window.renderLatex = async function(latex) {
+            currentLatex = latex;
+            
+            try {
+                if (currentEngine === 'mathjax') {
+                    await waitForMathJax();
+                    output.innerHTML = latex;
+                    if (window.MathJax && window.MathJax.typesetPromise) {
+                        await window.MathJax.typesetPromise([output]);
+                    } else {
+                        // Fallback to KaTeX if MathJax not ready
+                        katex.render(latex, output, {
+                            throwOnError: true,
+                            displayMode: true
+                        });
+                    }
+                } else {
+                    // Default to KaTeX
+                    katex.render(latex, output, {
+                        throwOnError: true,
+                        displayMode: true
+                    });
+                }
+                
+                applyStyles();
+                applyScale();
+            } catch (e) {
+                output.innerHTML = '<span class="error">渲染错误: ' + e.message + '</span>';
+            }
+        };
+        
+        window.setScale = function(scale) {
+            currentScale = scale;
+            applyScale();
+        };
+        
+        function applyScale() {
+            output.style.transform = 'scale(' + currentScale + ')';
+        }
+        
+        window.setFormulaColor = function(color) {
+            currentFormulaColor = color;
+            applyStyles();
+        };
+        
+        window.setBackgroundColor = function(color) {
+            currentBackgroundColor = color;
+            applyStyles();
+        };
+        
+        window.setFont = function(font) {
+            currentFont = font;
+            applyStyles();
+        };
+        
+        window.setFontSize = function(size) {
+            currentFontSize = size;
+            applyStyles();
+        };
+        
+        function applyStyles() {
+            // Set background color
+            if (currentBackgroundColor === 'transparent') {
+                document.body.style.backgroundColor = 'transparent';
+            } else {
+                document.body.style.backgroundColor = currentBackgroundColor;
+            }
+            
+            // Set font size
+            output.style.fontSize = currentFontSize + 'px';
+            
+            // Set font family
+            if (currentFont !== 'KaTeX') {
+                output.style.fontFamily = currentFont + ', serif';
+            } else {
+                output.style.fontFamily = '';
+            }
+            
+            // Set formula color for SVG elements
+            const svgElements = output.querySelectorAll('svg');
+            svgElements.forEach(svg => {
+                svg.style.color = currentFormulaColor;
+                const elements = svg.querySelectorAll('path, text, circle, rect, line, polygon, polyline, ellipse');
+                elements.forEach(el => {
+                    el.setAttribute('fill', currentFormulaColor);
+                    if (el.hasAttribute('stroke')) {
+                        el.setAttribute('stroke', currentFormulaColor);
+                    }
+                });
+            });
+            
+            // Set formula color for MathJax elements
+            const mathJaxElements = output.querySelectorAll('.mjx-container');
+            mathJaxElements.forEach(el => {
+                el.style.color = currentFormulaColor;
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            window.renderLatex('\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}');
+        });
+    </script>
+</body>
+</html>
