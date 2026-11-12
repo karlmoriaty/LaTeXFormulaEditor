@@ -1,96 +1,67 @@
-# LaTeX 公式编辑器 - 技术方案说明
+# LaTeX Formula Editor
 
-## 1. 技术选型
+A Windows desktop editor for writing LaTeX formulas and seeing them rendered as you
+type. A WPF shell hosts a KaTeX page inside WebView2, with a symbol palette, live
+preview, history and export to image or PDF.
 
-### 1.1 开发框架
-- **编程语言**: C# 12
-- **UI框架**: WPF (Windows Presentation Foundation)
-- **运行时**: .NET 8.0
+## Features
 
-### 1.2 LaTeX渲染方案
-- **Web组件**: Microsoft.Web.WebView2
-- **渲染库**: KaTeX 0.16.9
-- **CDN**: jsDelivr
+- **Live preview** — the preview updates from the editor through a WebView2 ↔ C#
+  bridge; render errors are shown inline instead of failing silently.
+- **Two render engines** — KaTeX and MathJax, switchable at runtime.
+- **Symbol palette** — tabs for fractions/roots, Greek letters, brackets, sums and
+  integrals, matrices, arrows, and sets/logic.
+- **Styling** — formula color, background color, font and font size, plus preview
+  zoom.
+- **Export** — save the rendered formula as PNG or PDF (SVG for some targets).
+- **History** — recently used formulas, reopenable from a separate window.
+- **Localized UI** — English, Chinese, German and Russian resources in
+  `Resources/*.json`.
+- **Help window** with an overview of the syntax and controls.
 
-## 2. 项目结构
+## How it works
 
 ```
-LaTeX_work/
-├── LaTeXFormulaEditor/
-│   ├── bin/
-│   ├── obj/
-│   ├── App.xaml
-│   ├── App.xaml.cs
-│   ├── AssemblyInfo.cs
-│   ├── LaTeXFormulaEditor.csproj
-│   ├── LaTeXRenderer.html
-│   ├── MainWindow.xaml
-│   └── MainWindow.xaml.cs
-└── 技术方案说明.md
+WPF window
+    └── WebView2 (Chromium)
+            └── LaTeXRenderer.html — KaTeX / MathJax render the input
 ```
 
-## 3. 核心技术点
+The C# side calls small JS functions (`renderLatex`, `setRenderEngine`,
+`setFormulaColor`, …) via `ExecuteScriptAsync`, and reads results back for export.
 
-### 3.1 WebView2 集成
-- 使用 Microsoft.Web.WebView2 组件嵌入现代 Chromium 浏览器
-- 提供高性能的 Web 内容渲染能力
-- 支持与 C# 代码的双向通信
+## Requirements
 
-### 3.2 KaTeX 渲染
-- 使用 KaTeX 进行 LaTeX 公式渲染
-- KaTeX 是一个快速、易用的 TeX 渲染库
-- 通过 CDN 加载，无需本地安装
+- Windows 10/11
+- .NET 8 SDK
+- WebView2 Runtime (preinstalled on Windows 11; install the Evergreen runtime on
+  Windows 10)
+- Network access for the KaTeX CDN assets
 
-### 3.3 架构设计
-```
-WPF 应用
-    ↓
-WebView2 控件
-    ↓
-HTML/JavaScript (KaTeX)
-    ↓
-LaTeX 渲染
-```
+## Build and run
 
-## 4. 依赖项
-
-| 依赖项 | 版本 | 说明 |
-|--------|------|------|
-| Microsoft.NET.Sdk | 8.0 | .NET SDK |
-| Microsoft.Web.WebView2 | 1.0.3912.50 | WebView2 组件 |
-| KaTeX | 0.16.9 | LaTeX 渲染库 |
-
-## 5. 编译运行
-
-### 5.1 编译
 ```bash
 cd LaTeXFormulaEditor
 dotnet build
-```
-
-### 5.2 运行
-```bash
 dotnet run
 ```
 
-## 6. 功能验证
+## Status
 
-当前项目已实现以下功能：
-- [x] WPF 应用程序框架
-- [x] WebView2 集成
-- [x] KaTeX LaTeX 渲染
-- [x] 基本的用户界面（输入框、渲染按钮）
-- [x] 示例公式展示
+Real: rendering, palette, styling, export, history, localization.
 
-## 7. 后续规划
+Stubbed: image-to-LaTeX recognition and natural-language ↔ LaTeX conversion are
+implemented against interfaces (`IFormulaRecognizer`,
+`INaturalLanguageConverter`, `ILatexToNaturalLanguageConverter`) but currently use
+mock implementations that return canned formulas. Dropping in a real backend means
+writing one class per interface.
 
-1. 增强公式编辑功能
-2. 添加公式模板库
-3. 实现公式导出功能（图片、PDF）
-4. 添加历史记录功能
-5. 优化用户体验
+## Stack
 
-## 8. 注意事项
+C# 12, WPF on .NET 8, Microsoft.Web.WebView2 1.0.3912.50, KaTeX 0.16.9 (MathJax 3 for
+the alternative engine), AvalonEdit for the editor, SkiaSharp + Svg.Skia for PNG/PDF
+export.
 
-- 需要网络连接以加载 KaTeX CDN 资源
-- Windows 系统需安装 WebView2 运行时（Windows 11 已预装）
+## License
+
+MIT
